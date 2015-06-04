@@ -5,7 +5,7 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include "ADXL362.h"
+#include "ADXL362-ARDZ.h"
 
 /******************************************************************************/
 /********************************* Definitions ********************************/
@@ -51,9 +51,6 @@
 
 // Inactivity timer value in seconds
 #define INACT_TIMER        5
-
-//const byte byte_zero = 0x00;
-//const byte byte_full = 0xFF;
 
 unsigned int	uireadValue = 0;
 unsigned int	uihighReadValue = 0;

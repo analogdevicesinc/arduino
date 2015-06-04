@@ -2,8 +2,8 @@
   ADXL362.h - Library for ADXL362 - Universal Toxic Gas Sensor
   Created by Analog Devices Inc. - Circuits from the Lab, May 2015.
 */
-#ifndef ADXL362_h
-#define ADXL362_h
+#ifndef ADXL362-ARDZ_h
+#define ADXL362-ARDZ_h
 
 #include "Arduino.h"
 
@@ -13,9 +13,6 @@
 #define ZDATA_L_REG        0x12
 #define TEMP_L_REG         0x14
 #define ADXL362_SS            7		// value of the CS pin assignment
-
-// WiFi demo pins ONLY!!
-//#define ADXL362_SS            5		// value of the CS pin assignment
 
 extern int16_t i16SensorX;
 extern int16_t i16SensorY;
