@@ -1,5 +1,5 @@
 /*
-  ADXL362.h - Library for ADXL362 - Universal Toxic Gas Sensor
+  ADXL362.h - Library for ADXL362 - Accelerometer
   Created by Analog Devices Inc. - Circuits from the Lab, May 2015.
 */
 #ifndef ADXL362-ARDZ_h
