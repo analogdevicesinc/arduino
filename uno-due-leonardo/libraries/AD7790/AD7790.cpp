@@ -29,7 +29,7 @@ uint16_t AD7790class::readAd7790 (uint8_t ui8address)
 		ui8AdcUpperCodes = SPI.transfer(0x00);			//Data register read MSB
 		ui8AdcLowerCodes = SPI.transfer(0x00);			//Data register read LSB
 		digitalWrite(AD7790_SS,HIGH);
-		ui16AdcCodes = ((lomg)ui8AdcUpperCodes << 8) | ui8AdcLowerCodes;
+		ui16AdcCodes = ((long)ui8AdcUpperCodes << 8) | ui8AdcLowerCodes;
 		
 		/*Serial.print("ADC Data Register Read : ");  //Debug serial prints
 		Serial.println(ui16AdcCodes,2);*/
