@@ -333,3 +333,15 @@ int adxl372_Get_FIFO_data(struct adxl372_device *dev, short *samples)
 
     return err;
 }
+
+int adxl372_Set_Interrupts(struct adxl372_device *dev)
+{
+  int err;
+  
+  err = adxl_write_reg(dev->spi, ADI_ADXL372_INT1_MAP, (0x1 << 6));
+  if (err < 0)
+      return err;
+
+  return err;
+}
+

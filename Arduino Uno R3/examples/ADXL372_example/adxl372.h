@@ -142,6 +142,18 @@ extern "C" {
 
 #define ADXL_SPI_RNW    1
 
+/*Acceleremoter configuration*/
+#define ACT_VALUE          30     /* Activity threshold value */
+
+#define INACT_VALUE        30     /* Inactivity threshold value */
+
+#define ACT_TIMER          1    /* Activity timer value in multiples of 3.3ms */
+
+#define INACT_TIMER        1     /* Inactivity timer value in multiples of 26ms */
+
+#define ADXL_INT1_PIN     7
+#define ADXL_INT2_PIN     5
+
 typedef unsigned char adxl_spi_handle;
 
 typedef enum {
@@ -270,6 +282,7 @@ int adxl372_Configure_FIFO(struct adxl372_device *dev, unsigned short fifo_sampl
                            ADXL372_FIFO_MODE fifo_mode,
                            ADXL372_FIFO_FORMAT fifo_format);
 int adxl372_Get_FIFO_data(struct adxl372_device *dev, short *samples);
+int adxl372_Set_Interrupts(struct adxl372_device *dev);
 
 
 #ifdef __cplusplus
