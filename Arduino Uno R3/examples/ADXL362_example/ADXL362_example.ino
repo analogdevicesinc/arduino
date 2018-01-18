@@ -14,6 +14,8 @@ uint8_t ui8yd;
 uint8_t ui8all;
 uint8_t ui8awake;
 
+char temp[10]; 
+
 #if TEMP_ADC == 0
    float f32temp;
 #endif
@@ -51,7 +53,7 @@ if (digitalRead(INTACC_PIN)) {
 #if TEMP_ADC == 1
             Lcd_DisplayString(3, 60, (int8_t *)"[ADC]");
 #else
-            Lcd_DisplayString(3, 60, (int8_t *)"[C]");
+            Lcd_DisplayString(3, 60, (int8_t *)" [C]");
 #endif
             ui8xu = 0;
             ui8xd = 0;
@@ -94,9 +96,11 @@ if (digitalRead(INTACC_PIN)) {
          sprintf((char *)ui8s, "t = % 5d", i16SensorT);
          Lcd_DisplayString(3, 0, (int8_t *)ui8s);
 #else
-         f32temp = ((float)i16SensorT + ACC_TEMP_BIAS) / (1 / ACC_TEMP_SENSITIVITY);   // -34.625
-         sprintf((char *)ui8s, "t = % 4.1f", f32temp);
-         Lcd_DisplayString(3, 0, (int8_t *)ui8s);
+         f32temp = ((float)i16SensorT + ACC_TEMP_BIAS) / (1 / ACC_TEMP_SENSITIVITY);
+         Lcd_DisplayString(3, 60, (int8_t *)" [C]");
+         dtostrf(f32temp, 2, 2, temp);  
+         sprintf((char *)ui8s, "t = %s  ", temp);
+         Lcd_DisplayString(3, 0, (int8_t *)ui8s); 
 #endif
 
          if (i16SensorY > ACC_LIMIT) {

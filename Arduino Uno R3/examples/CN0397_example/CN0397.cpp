@@ -84,6 +84,12 @@ void CN0397_DisplayData(void)
 
    for(channel = 0; channel < CHANNELS; channel++){
 
+         Serial.print(F("\tColor ")); Serial.print(colour[channel]); Serial.print(F("\t\t\t\t"));
+   }
+   Serial.println("");
+
+   for(channel = 0; channel < CHANNELS; channel++){
+
          Serial.print(F("\tLight Intensity = ")); Serial.print(intensityValue[channel]); Serial.print(F("lux\t\t"));
    }
 

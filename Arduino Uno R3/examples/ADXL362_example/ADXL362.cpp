@@ -161,8 +161,6 @@ void Sensor_Scan(void)
 
       i16SensorT = SPI_Read(TEMP_L_REG, SPI_READ_TWO_REG);
 
-      Serial.print(i16SensorX);  Serial.print("\t"); Serial.print(i16SensorY);  Serial.print("\t"); Serial.println(i16SensorZ);
-
       delay(200);
 }
 
