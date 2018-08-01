@@ -106,8 +106,8 @@ extern "C" {
 #define ADI_ADXL372_MEASURE		0x3Eu   /* Measure */
 #define ADI_ADXL372_POWER_CTL           0x3Fu   /* Power control */
 #define ADI_ADXL372_SELF_TEST           0x40u   /* Self Test */
-#define ADI_ADXL372_SRESET              0x2Fu   /* Reset */
-#define ADI_ADXL372_FIFO_DATA		0x2Fu   /* FIFO Data */
+#define ADI_ADXL372_SRESET              0x41u   /* Reset */
+#define ADI_ADXL372_FIFO_DATA		0x42u   /* FIFO Data */
 
 #define ADI_ADXL372_ADI_DEVID_VAL       0xADu   /* Analog Devices, Inc., accelerometer ID */
 #define ADI_ADXL372_MST_DEVID_VAL       0x1Du   /* Analog Devices MEMS device ID */
