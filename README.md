@@ -1,2 +1,2 @@
 # arduino
-Adruino Sketches
+Arduino Sketches
