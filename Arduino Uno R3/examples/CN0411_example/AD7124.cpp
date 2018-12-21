@@ -41,8 +41,9 @@
 /******************************************************************************/
 /***************************** Include Files **********************************/
 /******************************************************************************/
-#include <AD7124.h>
-#include <Communication.h>
+#include <Arduino.h>
+#include "AD7124.h"
+#include "Communication.h"
 
 /***************************************************************************//**
 * @brief Reads the value of the specified register without checking if the
@@ -54,6 +55,7 @@
 *               register structure.
 *
 * @return Returns 0 for success or negative error code.
+
 *******************************************************************************/
 int32_t AD7124_NoCheckReadRegister(struct ad7124_device *device,
 				   struct ad7124_st_reg* pReg)
@@ -63,6 +65,7 @@ int32_t AD7124_NoCheckReadRegister(struct ad7124_device *device,
 	uint8_t i         = 0;
 	uint8_t check8    = 0;
 	uint8_t msgBuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+	int32_t spi_size;
 
 	if(!device || !pReg)
 		return INVALID_VAL;
@@ -72,10 +75,12 @@ int32_t AD7124_NoCheckReadRegister(struct ad7124_device *device,
 		    AD7124_COMM_REG_RA(pReg->addr);
 
 	/* Read data from the device */
+
+	spi_size = ((device->useCRC != AD7124_DISABLE_CRC) ? pReg->size + 1 :
+			pReg->size) + 1;
+
 	ret = SPI_Read(device->slave_select_id,
-		       buffer,
-		       ((device->useCRC != AD7124_DISABLE_CRC) ? pReg->size + 1
-			: pReg->size) + 1);
+		       buffer, spi_size);
 	if(ret < 0)
 		return ret;
 
@@ -479,7 +484,7 @@ int32_t AD7124_Setup(struct ad7124_device *device, int slave_select_id,
 
 	/* Initialize registers AD7124_ADC_Control through AD7124_Filter_7. */
 	for(regNr = AD7124_Status; (regNr < AD7124_Offset_0) && !(ret < 0);
-	    regNr++) {
+	    regNr = regNr+1) {
 		if (regs[regNr].rw == AD7124_RW) {
 			ret = AD7124_WriteRegister(device, regs[regNr]);
 			if (ret < 0)

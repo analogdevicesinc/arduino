@@ -1,4 +1,4 @@
-#include <AD7124_regs.h>
+#include "AD7124_regs.h"
 
 struct ad7124_st_reg ad7124_regs[AD7124_REG_NO] = {
 	{0x00, 0x00,   1, 2}, /* AD7124_Status */

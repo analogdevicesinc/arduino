@@ -1,7 +1,7 @@
 /***************************************************************************//**
- *   @file   main.c
- *   @brief  Main file for CN0411.
- *   @author Antoniu Miclaus (antoniu.miclaus@analog.com)
+ *   @file   CN0411_example.ino
+ *   @brief  Main for the CN0411 Arduino demo.
+ *   @author Drimbarean Avram Andrei (Andrei.Drimbarean@analog.com)
 ********************************************************************************
  * Copyright 2018(c) Analog Devices, Inc.
  *
@@ -37,26 +37,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-/******************************************************************************/
-/***************************** Include Files **********************************/
-/******************************************************************************/
 
-#include <CN0411.h>
-#include <UrtLib.h>
+#include "CN0411.h"
 #include <stdio.h>
 #include "Timer.h"
-#include <Communication.h>
-
-// Sample pragmas to cope with warnings. Please note the related line at
-// the end of this function, used to pop the compiler diagnostics status.
-
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wmissing-declarations"
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#endif
-/* ****************************************************************************/
+#include "Communication.h"
 
 struct cn0411_init_params cn0411_init_params= {
 	CH_GAIN_RES_20M,
@@ -92,51 +77,32 @@ struct cn0411_init_params cn0411_init_params= {
 	}
 };
 
-/**
- * UART Interrupt Handler.
- *
- * Calls the internal interrupt handler for CN0411
- *
- * @return none.
- */
-void UART_Int_Handler (void)
-{
-	CN0411_interrupt();
-}
+struct cn0411_device cn0411_dev;
 
-/**
- * Main Function
- *
- * @param argc - Arguments count
- * @param argv - Arguments value
- * @return 0 in case of success, negative error code otherwise.
- */
-int main(int argc, char *argv[])
+void setup()
 {
-	struct cn0411_device cn0411_dev;
 	uint32_t ret;
 
-	timer_start();              /* Start the System Tick Timer. */
-	timer_start_us();
+	timer_start(); /* Start the System Tick Timer. */
 
 	/* Initialize UART */
-	UART_Init (B115200, COMLCR_WLS_8BITS);
+	UART_Init (115200, 8);
 
 	/* Initialize SPI */
-	ret = SPI_Init();
+	SPI_Init();
 	if (ret == CN0411_FAILURE)
-		return ret;
+		return;
 
 	/* Initialize CN0411 */
 	ret = CN0411_init(&cn0411_dev, cn0411_init_params);
 
 	if (ret == CN0411_FAILURE) {
-		printf("CN0411 Initialization error!\n");
-		return ret;
+		Serial.print(F("CN0411 Initialization error!\n"));
+		return;
 	}
-	while (1)
-		CN0411_cmd_process(&cn0411_dev);    /* Command line process */
-
-	return ret;
 }
 
+void loop()
+{
+	CN0411_cmd_process(&cn0411_dev); /* Command line process */
+}

@@ -50,8 +50,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 /********************************* Internal defines ****************************/
-#define UART_TX_BUFFER_SIZE      1024       // UART transmit buffer size
-#define UART_RX_BUFFER_SIZE      256        // UART receive buffer size
+#define UART_TX_BUFFER_SIZE      50 /* UART transmit buffer size */
+#define UART_RX_BUFFER_SIZE      50 /* UART receive buffer size */
 
 /* Execution status */
 #define UART_SUCCESS             0
@@ -63,36 +63,33 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define UART_TRUE                1
 #define UART_FALSE               0
 
-#define _CR                      13      /* <ENTER> */
-#define _LF                      10      /* <New line> */
-#define _SPC                     32      /* <Space> */
-#define _BS                      8       /* <Backspace> */
+#define _CR                      13 /* <ENTER> */
+#define _LF                      10 /* <New line> */
+#define _SPC                     32 /* <Space> */
+#define _BS                      8  /* <Backspace> */
 
 #define READ_DATA_REG            0x58
 /****************************** Global Data ***********************************/
 
-extern unsigned int           uart_rpos, uart_rcnt, uart_tpos, uart_tcnt;
-extern unsigned int           uart_echo, uart_cmd, uart_ctrlc, uart_tbusy;
+extern uint8_t           uart_rcnt, uart_tpos, uart_tcnt;
+extern uint8_t           uart_cmd, uart_tbusy;
 
-extern unsigned char          uart_rx_buffer[UART_RX_BUFFER_SIZE];
-extern unsigned char          uart_tx_buffer[UART_TX_BUFFER_SIZE];
+extern uint8_t          uart_rx_buffer[UART_RX_BUFFER_SIZE];
+extern uint8_t          uart_tx_buffer[UART_TX_BUFFER_SIZE];
 
 /****************************** Internal types *********************************/
 
-char Rx_char;
-uint8_t read_ch;
-
 /* Number of received bytes */
 typedef enum {
-	ONE_BYTE = 1,                 /* Read one byte */
-	TWO_BYTES                /* Read two bytes */
+	ONE_BYTE = 1, /* Read one byte */
+	TWO_BYTES     /* Read two bytes */
 } enReadBytes;
 
 
 /* Write data mode */
 typedef enum {
-	UART_WRITE_NO_INT = 1,            /* Write data when interrupts are disabled */
-	UART_WRITE_IN_INT,               /* Write data while in an interrupt routine */
+	UART_WRITE_NO_INT = 1, /* Write data when interrupts are disabled */
+	UART_WRITE_IN_INT,     /* Write data while in an interrupt routine */
 	UART_WRITE
 } enWriteData;
 
@@ -113,25 +110,25 @@ typedef enum {
 
 /* CS_AD7124 - 0.4 - output */
 
-#define CS_AD7124_PIN 0x10
+#define CS_AD7124_PIN 9
 #define CS_AD7124_PIN_NUMBER PIN4
 
 /* CS_AD5683 - 0.3 - output */
 
-#define CS_AD5683_PIN 0x08
+#define CS_AD5683_PIN 10
 #define CS_AD5683_PIN_NUMBER PIN3
 
 /* SPI Functions */
 
-int32_t SPI_Init();
+void SPI_Init();
 int32_t SPI_Write(uint8_t ui8_slave_id, uint8_t ui8_buffer[],
 		  uint8_t ui8_nr_bytes);
 int32_t SPI_Read(uint8_t ui8_slave_id, uint8_t ui8_buffer[],
 		 uint8_t ui8_nr_bytes);
 void UART_Init(long lBaudrate, int iBits);
 void UART_ReadChar(char *data);
-int UART_WriteChar(char data, enWriteData mode);
-int UART_WriteString(char *string);
+void UART_WriteChar(char data, enWriteData mode);
+void UART_WriteString(char *string);
 void AppPrintf(const char *fmt, ...);
 
 #endif /* INCLUDE_COMMUNICATION_H_ */
