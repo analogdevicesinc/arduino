@@ -41,25 +41,34 @@
 /***************************** Include Files **********************************/
 /******************************************************************************/
 
+#include <Arduino.h>
 #include "AD7124_regs.h"
 #include "CN0411.h"
-#include <Communication.h>
-#include <UrtLib.h>
-#include <PwmLib.h>
+#include "Communication.h"
 #include "Timer.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <string.h>
-#include "DioLib.h"
-#include "math.h"
+#include <math.h>
 
 /******************************************************************************/
 /*************************** Variable Definitions *****************************/
 /******************************************************************************/
 
+uint8_t pwm_status;
+uint8_t pwm_index;
+uint32_t pwm_tick_count;
+
+uint16_t pwm_2400_freq[6];
+uint16_t pwm_100_freq[6];
+uint16_t pwm_bit[6];
+uint16_t pwm_setclr[6];
+
+uint16_t *pwm_freq;
+
 /* Available commands */
-char *cmd_commands[] = {
+uint8_t *cmd_commands[] = {
 	"help",
 	"syscal",
 	"refres",
@@ -197,7 +206,7 @@ int32_t CN0411_ADC_setup (struct cn0411_device *cn0411_dev)
 int32_t CN0411_ADC_set_ch (struct cn0411_device *cn0411_dev, uint8_t channel,
 			   uint8_t ch_en )
 {
-	int32_t mask;
+	uint32_t mask;
 
 	switch(channel) {
 	case ADC_CH0:
@@ -247,9 +256,9 @@ int32_t CN0411_ADC_set_ch (struct cn0411_device *cn0411_dev, uint8_t channel,
 */
 int32_t CN0411_ADC_set_io1 (struct cn0411_device *cn0411_dev, uint8_t ch_gain)
 {
-	int32_t mask;
+	int32_t mask = 0;
 
-	mask = (((ch_gain + 1) << 20) |
+	mask = (((int32_t)(ch_gain + 1) << 20) |
 		(AD7124_8_IO_CTRL1_REG_GPIO_CTRL3 |
 		 AD7124_8_IO_CTRL1_REG_GPIO_CTRL2 |
 		 AD7124_8_IO_CTRL1_REG_GPIO_CTRL1) |
@@ -289,7 +298,8 @@ int32_t CN0411_ADC_conv_init(struct cn0411_device *cn0411_dev, uint8_t conv_mod)
 	switch(conv_mod) {
 	case ADC_SINGLE_CONV:
 		for (uint8_t ch = ADC_CH0; ch <= ADC_CH5; ch ++)
-			if(CN0411_ADC_set_ch(cn0411_dev, ch, ADC_CH_DISABLE) == CN0411_FAILURE)
+			if(CN0411_ADC_set_ch(cn0411_dev, ch, ADC_CH_DISABLE) ==
+			    CN0411_FAILURE)
 				return CN0411_FAILURE;
 
 		if(CN0411_ADC_operation_mode(cn0411_dev, IDLE_MODE) == CN0411_FAILURE)
@@ -298,10 +308,12 @@ int32_t CN0411_ADC_conv_init(struct cn0411_device *cn0411_dev, uint8_t conv_mod)
 		break;
 	case ADC_CONTINUOUS_CONV:
 		for (int ch = ADC_CH0; ch <= ADC_CH5; ch ++)
-			if(CN0411_ADC_set_ch(cn0411_dev, ch, ADC_CH_ENABLE) == CN0411_FAILURE)
+			if(CN0411_ADC_set_ch(cn0411_dev, ch, ADC_CH_ENABLE) ==
+			    CN0411_FAILURE)
 				return CN0411_FAILURE;
 
-		if(CN0411_ADC_operation_mode(cn0411_dev, CONTINUOUS_CONV) == CN0411_FAILURE)
+		if(CN0411_ADC_operation_mode(cn0411_dev, CONTINUOUS_CONV) ==
+		    CN0411_FAILURE)
 			return CN0411_FAILURE;
 
 		break;
@@ -336,10 +348,12 @@ int32_t CN0411_ADC_read_ch(struct cn0411_device *cn0411_dev, uint8_t ch)
 		timeout = 4000000; /* 4000000 * 5uS = 20s */
 		do {
 			if(AD7124_ReadRegister(&cn0411_dev->ad7124_dev,
-					       &cn0411_dev->ad7124_dev.regs[AD7124_Status]) == CN0411_FAILURE)
+					       &cn0411_dev->ad7124_dev.regs[AD7124_Status]) ==
+			    CN0411_FAILURE)
 				return CN0411_FAILURE;
 
-			status_reg = cn0411_dev->ad7124_dev.regs[AD7124_Status].value & ADC_CH_RDY_MSK;
+			status_reg = cn0411_dev->ad7124_dev.regs[AD7124_Status].value &
+				     ADC_CH_RDY_MSK;
 			timer_sleep_5uS(1u);
 		} while((status_reg == ch) && (--timeout));
 
@@ -349,10 +363,12 @@ int32_t CN0411_ADC_read_ch(struct cn0411_device *cn0411_dev, uint8_t ch)
 		timeout = 4000000;
 		do {
 			if(AD7124_ReadRegister(&cn0411_dev->ad7124_dev,
-					       &cn0411_dev->ad7124_dev.regs[AD7124_Status]) == CN0411_FAILURE)
+					       &cn0411_dev->ad7124_dev.regs[AD7124_Status]) ==
+			    CN0411_FAILURE)
 				return CN0411_FAILURE;
 
-			status_reg = cn0411_dev->ad7124_dev.regs[AD7124_Status].value & ADC_CH_RDY_MSK;
+			status_reg = cn0411_dev->ad7124_dev.regs[AD7124_Status].value &
+				     ADC_CH_RDY_MSK;
 			timer_sleep_5uS(1u);
 		} while(status_reg != ch && (--timeout));
 
@@ -360,7 +376,8 @@ int32_t CN0411_ADC_read_ch(struct cn0411_device *cn0411_dev, uint8_t ch)
 			return CN0411_FAILURE;
 
 		if(AD7124_ReadRegister(&cn0411_dev->ad7124_dev,
-				       &cn0411_dev->ad7124_dev.regs[AD7124_Data]) == CN0411_FAILURE)
+				       &cn0411_dev->ad7124_dev.regs[AD7124_Data]) ==
+		    CN0411_FAILURE)
 			return CN0411_FAILURE;
 
 		break;
@@ -373,8 +390,9 @@ int32_t CN0411_ADC_read_ch(struct cn0411_device *cn0411_dev, uint8_t ch)
 		if (ret == CN0411_FAILURE)
 			return ret;
 
-		if (AD7124_WaitForConvReady(&cn0411_dev->ad7124_dev, ADC_TIMEOUT) == TIMEOUT) {
-			printf("TIMEOUT\n");
+		if (AD7124_WaitForConvReady(&cn0411_dev->ad7124_dev, ADC_TIMEOUT) ==
+		    TIMEOUT) {
+			Serial.print(F("TIMEOUT\n"));
 			return CN0411_FAILURE;
 		}
 		ret = AD7124_ReadRegister(&cn0411_dev->ad7124_dev,
@@ -415,7 +433,7 @@ int32_t CN0411_read_temp(struct cn0411_device *cn0411_dev)
 
 	float resistance = (float)(ch0_data) * RTD_REF_RES / 0xFFFFFF;
 	if(resistance < cn0411_dev->rtd_res)
-		/* temp_rtd = a0 + a1 * r + a2 * r^2 + a3 * r^3 + a4 * r^4 +  a5 * r^5 */
+		/* temp_rtd = a0+a1*r+a2*r^2+a3*r^3+a4*r^4+a5*r^5 */
 		cn0411_dev->temp = -242.02 + 2.228 * resistance + (2.5859 * pow(10, -3))
 				   * pow(resistance, 2) - (48260.0 * pow(10, -6))
 				   * pow(resistance, 3) - (2.8183 * pow(10, -3))
@@ -816,6 +834,7 @@ int32_t CN0411_set_gain_res(struct cn0411_device *cn0411_dev, int8_t ch_gain)
 
 	return CN0411_ADC_set_io1 (cn0411_dev, cn0411_dev->ch_gain);
 }
+
 /**
  * Find available commands
  *
@@ -849,6 +868,9 @@ cmd_func CN0411_find_command(char *cmd)
 void CN0411_cmd_process(struct cn0411_device *cn0411_dev)
 {
 	cmd_func func;
+	int i;
+
+	CN0411_interrupt();
 
 	/* Check if <ENTER> key was pressed */
 	if (uart_cmd == UART_TRUE) {
@@ -858,20 +880,26 @@ void CN0411_cmd_process(struct cn0411_device *cn0411_dev)
 
 		/* Check if there is a valid command */
 		if (func) {
-			printf("\n");
+			Serial.print(F("\n"));
 			/* Call the desired function */
 			(*func)(&uart_rx_buffer[2], cn0411_dev);
 
 			/* Check if there is no match for typed command */
 		} else if (strlen((char *)uart_rx_buffer) != 0) {
-			printf("\n");
+			Serial.print(F("\n"));
 			/* Display a message for unknown command */
-			printf("Unknown command!");
-			printf("\n");
+			Serial.print(F("Unknown command!"));
+			Serial.print(F("\n"));
 		}
 
 		/* Prepare for next <ENTER> */
 		uart_cmd = UART_FALSE;
+		if(Serial.available() != 0) {
+			for(i = 0; i < Serial.available(); i++) {
+				Serial.read();
+			}
+		}
+		uart_rcnt = 0;
 		CN0411_cmd_prompt();
 	}
 }
@@ -881,28 +909,21 @@ void CN0411_cmd_process(struct cn0411_device *cn0411_dev)
  *
  * @return 0 in case of success, negative error code otherwise.
 */
-int32_t CN0411_cmd_prompt(void)
+void CN0411_cmd_prompt(void)
 {
-	int32_t res;
 	static uint8_t count = 0;
 
-	res = UART_WriteChar(_CR, UART_WRITE_NO_INT);
-	if (res == UART_SUCCESS) {
-		res = UART_WriteChar(_LF, UART_WRITE_NO_INT);
-	}
+	UART_WriteChar(_CR, UART_WRITE_NO_INT);
+	UART_WriteChar(_LF, UART_WRITE_NO_INT);
 	/* Check first <ENTER> is pressed after reset */
 	if(count == 0) {
-		printf("\tWelcome to CN0411 application!\n");
-		printf("Type <help> to see available commands...\n");
-		printf("\n");
+		Serial.print(F("\tWelcome to CN0411 application!\n"));
+		Serial.print(F("Type <help> to see available commands...\n"));
+		Serial.print(F("\n"));
 		count++;
 	}
-	if (res == UART_SUCCESS) {
-		UART_WriteChar(':', UART_WRITE_NO_INT);
-	}
+	UART_WriteChar(':', UART_WRITE_NO_INT);
 	uart_rcnt = 0;
-
-	return res;
 }
 
 /**
@@ -961,46 +982,54 @@ void CN0411_get_argv(char *dst, uint8_t *args)
 */
 void CN0411_cmd_help(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
-	printf("\n");
-	printf("Available commands:\n");
-	printf(" help                          - Display available commands\n");
-	printf(" syscal                        - Perform ADC system zero-scale "
-	       "calibration \n");
-	printf("                                 Before calibration, short "
-	       "terminals 5 & 6 \n");
-	printf("                                 in jumper P5. \n");
-	printf(" refres                        - Perform Referencing to a "
-	       "Precision Resistance \n");
-	printf("                                 Before referencing, short "
-	       "terminals 3 & 4 \n");
-	printf("                                 in jumper P5. \n");
-	printf(" convmod (sing/cont)           - set single/continuous conversion "
-	       "mode for ADC \n");
-	printf(" autoset                       - Autoset Gain Resistance.\n");
-	printf(" setdac <val>                  - Set DAC value (Volts) \n");
-	printf("                                 <val> = values from 0 to 2.5 \n");
-	printf(" gainres <val>                 - Set Gain Resistor value (Ω) \n");
-	printf("                                 <val> = 20/200/2K/20K/200K/2M/20M"
-	       " \n");
-	printf(" rtdval <val>                  - Set RTD value (Ω) \n");
-	printf("                                 <val> = values 100, 1000 \n");
-	printf(" pwmfreq <val>                 - Set PWM frequency value (Hz) \n");
-	printf("                                 <val> = values 94, 2400 \n");
-	printf(" cellconst (low/normal/high/<val>)\n");
-	printf("                               - set cell constant for "
-	       "conductivity types\n");
-	printf(" solution (kcl/nacl/<val_tmp_coeff,val_tds_factor>)\n");
-	printf("                               - set parameters for specific "
-	       "solution \n");
-	printf(" temp                          - Display temperature value\n");
-	printf(" vinput (pos/neg)              - Display Positive/Negative input "
-	       "voltage \n");
-	printf(" readdac                       - Read DAC value (Volts) \n");
-	printf(" rdr20s                        - Read Voltage on R20S (Volts) \n");
-	printf(" rdr200s                       - Read Voltage on R200S (Volts) \n");
-	printf(" rdres                         - Read Input Resistance (Volts) \n");
-	printf(" cond                          - Display conductivity value \n");
-	printf(" tds                           - Display TDS value \n");
+	Serial.print(F("\n"));
+	Serial.print(F("Available commands:\n"));
+	Serial.print(
+		F(" help                          - Display available commands\n"));
+	Serial.print(
+		F(" syscal                        - Perform ADC system zero-scale calibration \n"));
+	Serial.print(
+		F("                                 Before calibration, short terminals 5 & 6 \n"));
+	Serial.print(F("                                 in jumper P5. \n"));
+	Serial.print(
+		F(" refres                        - Perform Referencing to a Precision Resistance \n"));
+	Serial.print(
+		F("                                 Before referencing, short terminals 3 & 4 \n"));
+	Serial.print(F("                                 in jumper P5. \n"));
+	Serial.print(
+		F(" convmod (sing/cont)           - set single/continuous conversion mode for ADC \n"));
+	Serial.print(F(" autoset                       - Autoset Gain Resistance.\n"));
+	Serial.print(F(" setdac <val>                  - Set DAC value (Volts) \n"));
+	Serial.print(
+		F("                                 <val> = values from 0 to 2.5 \n"));
+	Serial.print(
+		F(" gainres <val>                 - Set Gain Resistor value (Ω) \n"));
+	Serial.print(
+		F("                                 <val> = 20/200/2K/20K/200K/2M/20M\n"));
+	Serial.print(F(" rtdval <val>                  - Set RTD value (Ω) \n"));
+	Serial.print(F("                                 <val> = values 100, 1000 \n"));
+	Serial.print(
+		F(" pwmfreq <val>                 - Set PWM frequency value (Hz) \n"));
+	Serial.print(F("                                 <val> = values 94, 2400 \n"));
+	Serial.print(F(" cellconst (low/normal/high/<val>)\n"));
+	Serial.print(
+		F("                               - set cell constant for conductivity types\n"));
+	Serial.print(F(" solution (kcl/nacl/<val_tmp_coeff,val_tds_factor>)\n"));
+	Serial.print(
+		F("                               - set parameters for specific solution \n"));
+	Serial.print(F(" temp                          - Display temperature value\n"));
+	Serial.print(
+		F(" vinput (pos/neg)              - Display Positive/Negative input voltage \n"));
+	Serial.print(F(" readdac                       - Read DAC value (Volts) \n"));
+	Serial.print(
+		F(" rdr20s                        - Read Voltage on R20S (Volts) \n"));
+	Serial.print(
+		F(" rdr200s                       - Read Voltage on R200S (Volts) \n"));
+	Serial.print(
+		F(" rdres                         - Read Input Resistance (Volts) \n"));
+	Serial.print(
+		F(" cond                          - Display conductivity value \n"));
+	Serial.print(F(" tds                           - Display TDS value \n"));
 }
 
 /**
@@ -1012,12 +1041,12 @@ void CN0411_cmd_help(uint8_t *args, struct cn0411_device *cn0411_dev)
 */
 void CN0411_cmd_sys_calib(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
-	printf("ADC System Calibration in progress...\n");
+	Serial.print(F("ADC System Calibration in progress...\n"));
 
 	if(CN0411_ADC_sys_calibrate(cn0411_dev) == CN0411_FAILURE)
-		printf("ADC System Calibration failed!\n");
+		Serial.print(F("ADC System Calibration failed!\n"));
 	else
-		printf("ADC System Calibration completed!\n");
+		Serial.print(F("ADC System Calibration completed!\n"));
 }
 
 /**
@@ -1029,11 +1058,11 @@ void CN0411_cmd_sys_calib(uint8_t *args, struct cn0411_device *cn0411_dev)
 */
 void CN0411_cmd_off_res(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
-	printf("Referencing to a Precision Resistance in progress...\n");
+	Serial.print(F("Referencing to a Precision Resistance in progress...\n"));
 	if(CN0411_compute_off_res(cn0411_dev) == CN0411_FAILURE)
-		printf("Referencing to a Precision Resistance failed!\n");
+		Serial.print(F("Referencing to a Precision Resistance failed!\n"));
 	else
-		printf("Referencing to a Precision Resistance completed!\n");
+		Serial.print(F("Referencing to a Precision Resistance completed!\n"));
 }
 
 /**
@@ -1057,17 +1086,17 @@ void CN0411_cmd_conv_mode(uint8_t *args, struct cn0411_device *cn0411_dev)
 	if(!strcmp(arg, "sing")) {
 		cn0411_dev->conv_type = ADC_SINGLE_CONV;
 		ret = CN0411_ADC_conv_init(cn0411_dev, cn0411_dev->conv_type);
-		printf("ADC set to single Conversion Mode.\n");
+		Serial.print(F("ADC set to single Conversion Mode.\n"));
 	} else if (!strcmp(arg, "cont")) {
 		cn0411_dev->conv_type = ADC_CONTINUOUS_CONV;
 		ret = CN0411_ADC_conv_init(cn0411_dev, cn0411_dev->conv_type);
-		printf("ADC set to continuous Conversion Mode.\n");
+		Serial.print(F("ADC set to continuous Conversion Mode.\n"));
 	} else {
 		ret = CN0411_FAILURE;
-		printf("Incorrect input value!\n");
+		Serial.print(F("Incorrect input value!\n"));
 	}
 	if (ret != CN0411_SUCCESS) {
-		printf("Conversion Mode initialization failed!\n");
+		Serial.print(F("Conversion Mode initialization failed!\n"));
 	}
 }
 
@@ -1080,12 +1109,12 @@ void CN0411_cmd_conv_mode(uint8_t *args, struct cn0411_device *cn0411_dev)
 */
 void CN0411_cmd_autoset(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
-	printf("Autoset Gain Resistance in progress...\n");
+	Serial.print(F("Autoset Gain Resistance in progress...\n"));
 
 	if(CN0411_premeasurement(cn0411_dev) == CN0411_FAILURE)
-		printf("Autoset Gain Resistance failed!\n");
+		Serial.print(F("Autoset Gain Resistance failed!\n"));
 	else
-		printf("Autoset Gain Resistance completed!\n");
+		Serial.print(F("Autoset Gain Resistance completed!\n"));
 }
 
 /**
@@ -1110,14 +1139,16 @@ void CN0411_cmd_set_dac(uint8_t *args, struct cn0411_device *cn0411_dev)
 	input_val = atof(arg);
 	if(input_val < 0 || input_val > 2.5) {
 		ret = CN0411_FAILURE;
-		printf("Input out of range!.\n");
+		Serial.print(F("Input out of range!.\n"));
 	} else {
 		cn0411_dev->v_dac = input_val;
 		ret = CN0411_DAC_set_value(cn0411_dev, cn0411_dev->v_dac);
-		printf("DAC value set to %s V.\n", arg);
+		Serial.print(F("DAC value set to "));
+		Serial.print(arg);
+		Serial.print(F(" V.\n"));
 	}
 	if (ret != CN0411_SUCCESS) {
-		printf("Set DAC value failed!.\n");
+		Serial.print(F("Set DAC value failed!.\n"));
 	}
 }
 
@@ -1143,30 +1174,30 @@ void CN0411_cmd_gain_res(uint8_t *args, struct cn0411_device *cn0411_dev)
 
 	if(!strcmp(arg, "20M")) {
 		ret = CN0411_set_gain_res(cn0411_dev, CH_GAIN_RES_20M);
-		printf("Gain Resistor set to 20M.\n");
+		Serial.print(F("Gain Resistor set to 20M.\n"));
 	} else if(!strcmp(arg, "2M")) {
 		ret = CN0411_set_gain_res(cn0411_dev, CH_GAIN_RES_2M);
-		printf("Gain Resistor set to 2M.\n");
+		Serial.print(F("Gain Resistor set to 2M.\n"));
 	} else if(!strcmp(arg, "200K")) {
 		ret = CN0411_set_gain_res(cn0411_dev, CH_GAIN_RES_200K);
-		printf("Gain Resistor set to 200K.\n");
+		Serial.print(F("Gain Resistor set to 200K.\n"));
 	} else if(!strcmp(arg, "20K")) {
 		ret = CN0411_set_gain_res(cn0411_dev, CH_GAIN_RES_20K);
-		printf("Gain Resistor set to 20K.\n");
+		Serial.print(F("Gain Resistor set to 20K.\n"));
 	} else if(!strcmp(arg, "2K")) {
 		ret = CN0411_set_gain_res(cn0411_dev, CH_GAIN_RES_2K);
-		printf("Gain Resistor set to 2K.\n");
+		Serial.print(F("Gain Resistor set to 2K.\n"));
 	} else if(!strcmp(arg, "200")) {
 		ret = CN0411_set_gain_res(cn0411_dev, CH_GAIN_RES_200);
-		printf("Gain Resistor set to 200.\n");
+		Serial.print(F("Gain Resistor set to 200.\n"));
 	} else if(!strcmp(arg, "20")) {
 		ret = CN0411_set_gain_res(cn0411_dev, CH_GAIN_RES_20);
-		printf("Gain Resistor set to 20.\n");
+		Serial.print(F("Gain Resistor set to 20.\n"));
 	} else {
-		printf("Invalid argument!\n");
+		Serial.print(F("Invalid argument!\n"));
 	}
 	if (ret == CN0411_FAILURE) {
-		printf("Set gain resistor value failed!\n");
+		Serial.print(F("Set gain resistor value failed!\n"));
 	}
 }
 
@@ -1192,12 +1223,12 @@ void CN0411_cmd_rtd_val(uint8_t *args, struct cn0411_device *cn0411_dev)
 	input_val = atoi(arg);
 	if(input_val == 100) {
 		cn0411_dev->rtd_res = RTD_RES_100;
-		printf("RTD value set to 100Ω.\n");
+		Serial.print(F("RTD value set to 100Ω.\n"));
 	} else if(input_val == 1000) {
 		cn0411_dev->rtd_res = RTD_RES_1K;
-		printf("RTD value set to 1kΩ.\n");
+		Serial.print(F("RTD value set to 1kΩ.\n"));
 	} else {
-		printf("Incorrect value!\n");
+		Serial.print(F("Incorrect value!\n"));
 	}
 }
 
@@ -1224,11 +1255,11 @@ void CN0411_cmd_pwm_freq(uint8_t *args, struct cn0411_device * cn0411_dev)
 	if(input_val == PWM_FREQ_94 || input_val == PWM_FREQ_2400) {
 		CN0411_pwm_freq(input_val);
 		if(input_val == PWM_FREQ_94)
-			printf("PWM frequency set to 94Hz.\n");
+			Serial.print(F("PWM frequency set to 94Hz.\n"));
 		else
-			printf("PWM frequency set to 2.4KHz.\n");
+			Serial.print(F("PWM frequency set to 2.4KHz.\n"));
 	} else {
-		printf("Incorrect value!\n");
+		Serial.print(F("Incorrect value!\n"));
 	}
 }
 
@@ -1254,20 +1285,21 @@ void CN0411_cmd_cell_const(uint8_t *args, struct cn0411_device *cn0411_dev)
 
 	if(!strcmp(arg, "low")) {
 		cn0411_dev->cell_const = CELL_CONST_LOW;
-		printf("Cell Constant set to low.\n");
+		Serial.print(F("Cell Constant set to low.\n"));
 	} else if (!strcmp(arg, "normal")) {
 		cn0411_dev->cell_const = CELL_CONST_NORMAL;
-		printf("Cell Constant set to normal.\n");
+		Serial.print(F("Cell Constant set to normal.\n"));
 	} else if (!strcmp(arg, "high")) {
 		cn0411_dev->cell_const = CELL_CONST_HIGH;
-		printf("Cell Constant set to high.\n");
+		Serial.print(F("Cell Constant set to high.\n"));
 	} else {
 		input_val = atof(arg);
 		if(input_val > 0) {
 			cn0411_dev->cell_const = input_val;
-			printf("Cell Constant set to %.2f.\n", input_val);
+			Serial.print(F("Cell Constant set to "));
+			Serial.println(input_val);
 		} else {
-			printf("Incorrect input value!\n");
+			Serial.print(F("Incorrect input value!\n"));
 		}
 	}
 }
@@ -1294,26 +1326,27 @@ void CN0411_cmd_solution(uint8_t *args, struct cn0411_device *cn0411_dev)
 	if(!strcmp(arg, "kcl")) {
 		cn0411_dev->solution.temp_coeff = TEMP_COEFF_KCL;
 		cn0411_dev->solution.tds_factor = TDS_KCL;
-		printf("Solution set to KCl.\n");
+		Serial.print(F("Solution set to KCl.\n"));
 	} else if (!strcmp(arg, "nacl")) {
 		cn0411_dev->solution.temp_coeff = TEMP_COEFF_NACL;
 		cn0411_dev->solution.tds_factor = TDS_NACL;
-		printf("Solution set to NaCl.\n");
+		Serial.print(F("Solution set to NaCl.\n"));
 	} else {
 		index = 0;
 		str = strtok (arg, ",");
 		while (str != NULL) {
 			input_val = atof(str);
 			if(input_val < 0 || index > 1) {
-				printf("Incorrect input value!\n");
+				Serial.print(F("Incorrect input value!\n"));
 				break;
 			} else if(index == 0) {
 				cn0411_dev->solution.temp_coeff = input_val;
-				printf("Temperature coefficient set to %.2f.\n",
-				       cn0411_dev->solution.temp_coeff);
+				Serial.print(F("Temperature coefficient set to "));
+				Serial.println(cn0411_dev->solution.temp_coeff);
 			} else {
 				cn0411_dev->solution.tds_factor = input_val;
-				printf("TDS factor set to %.2f.\n", cn0411_dev->solution.tds_factor);
+				Serial.print(F("TDS factor set to "));
+				Serial.println(cn0411_dev->solution.tds_factor);
 			}
 			str = strtok (NULL, ",");
 			index++;
@@ -1331,9 +1364,11 @@ void CN0411_cmd_solution(uint8_t *args, struct cn0411_device *cn0411_dev)
 void CN0411_cmd_temp(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
 	if(CN0411_read_temp(cn0411_dev) == CN0411_FAILURE) {
-		printf("Get Temperature value failed!\n");
+		Serial.print(F("Get Temperature value failed!\n"));
 	} else {
-		printf("Temperature = %.2f[°C]\n", cn0411_dev->temp);
+		Serial.print(F("Temperature = "));
+		Serial.print(cn0411_dev->temp);
+		Serial.print(F("[°C]\n"));
 	}
 }
 
@@ -1355,14 +1390,19 @@ void CN0411_cmd_vinput(uint8_t *args, struct cn0411_device *cn0411_dev)
 		CN0411_get_argv(arg, p);
 
 	if(CN0411_read_vpp(cn0411_dev) == CN0411_FAILURE)
-		printf("Get Input Voltage value failed!\n");
+		Serial.print(F("Get Input Voltage value failed!\n"));
 	else {
-		if(!strcmp(arg, "pos"))
-			printf("Positive Input Voltage = %.5f V\n", cn0411_dev->vin_p);
-		else if(!strcmp(arg, "neg"))
-			printf("Negative Input Voltage = %.5f V\n", cn0411_dev->vin_n);
-		else
-			printf("Incorrect input value!\n");
+		if(!strcmp(arg, "pos")) {
+			Serial.print(F("Positive Input Voltage = "));
+			Serial.print(cn0411_dev->vin_p, 5);
+			Serial.print(F(" V\n"));
+		} else if(!strcmp(arg, "neg")) {
+			Serial.print(F("Negative Input Voltage = "));
+			Serial.print(cn0411_dev->vin_n, 5);
+			Serial.print(F(" V\n"));
+		} else {
+			Serial.print(F("Incorrect input value!\n"));
+		}
 	}
 }
 
@@ -1376,9 +1416,11 @@ void CN0411_cmd_vinput(uint8_t *args, struct cn0411_device *cn0411_dev)
 void CN0411_cmd_read_dac(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
 	if(CN0411_read_vdac(cn0411_dev) == CN0411_FAILURE)
-		printf("Read DAC Voltage value failed!\n");
+		Serial.print(F("Read DAC Voltage value failed!\n"));
 	else
-		printf("DAC value = %.3f V\n", cn0411_dev->read_dac);
+		Serial.print(F("DAC value = "));
+	Serial.print(cn0411_dev->read_dac, 5);
+	Serial.print(F(" V\n"));
 }
 
 /**
@@ -1394,11 +1436,13 @@ void CN0411_cmd_read_20s(uint8_t *args, struct cn0411_device *cn0411_dev)
 
 	ret = CN0411_read_R20S(cn0411_dev);
 	ret |= CN0411_read_vdac(cn0411_dev);
-	if(ret == CN0411_SUCCESS)
-		printf("Voltage on R20S value = %.3f V\n",
-		       (cn0411_dev->read_dac - cn0411_dev->read_v_r20s));
-	else
-		printf("Read Voltage on R20S Value failed!\n");
+	if(ret == CN0411_SUCCESS) {
+		Serial.print(F("Voltage on R20S value = "));
+		Serial.print((cn0411_dev->read_dac - cn0411_dev->read_v_r20s));
+		Serial.print(F(" V\n"));
+	} else {
+		Serial.print(F("Read Voltage on R20S Value failed!\n"));
+	}
 }
 
 /**
@@ -1415,11 +1459,13 @@ void CN0411_cmd_read_200s(uint8_t *args, struct cn0411_device *cn0411_dev)
 	ret = CN0411_read_R200S(cn0411_dev);
 	ret |= CN0411_read_vdac(cn0411_dev);
 
-	if(ret == CN0411_SUCCESS)
-		printf("Voltage on R200S value = %.3f V\n",
-		       (cn0411_dev->read_dac - cn0411_dev->read_v_r200s));
-	else
-		printf("Read Voltage on R200S Value failed!\n");
+	if(ret == CN0411_SUCCESS) {
+		Serial.print(F("Voltage on R200S value = "));
+		Serial.print((cn0411_dev->read_dac - cn0411_dev->read_v_r200s));
+		Serial.print(F(" V\n"));
+	} else {
+		Serial.print(F("Read Voltage on R200S Value failed!\n"));
+	}
 }
 
 /**
@@ -1432,9 +1478,11 @@ void CN0411_cmd_read_200s(uint8_t *args, struct cn0411_device *cn0411_dev)
 void CN0411_cmd_rdres(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
 	if(CN0411_compute_rdres(cn0411_dev) == CN0411_FAILURE)
-		printf("Input resistance value failed!\n");
+		Serial.print(F("Input resistance value failed!\n"));
 	else
-		printf("Input resistance value = %.3f Ω\n", cn0411_dev->rdres);
+		Serial.print(F("Input resistance value = "));
+	Serial.print(cn0411_dev->rdres);
+	Serial.print(F(" Ω\n"));
 }
 
 /**
@@ -1446,12 +1494,13 @@ void CN0411_cmd_rdres(uint8_t *args, struct cn0411_device *cn0411_dev)
 */
 void CN0411_cmd_cond(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
-	printf("Conductivity measurement in progress...\n");
+	Serial.print(F("Conductivity measurement in progress...\n"));
 
 	if(CN0411_compensate_cond(cn0411_dev) == CN0411_FAILURE)
-		printf("Get Conductivity value failed!\n");
+		Serial.print(F("Get Conductivity value failed!\n"));
 	else
-		printf("Conductivity = %.10f\n", cn0411_dev->cond);
+		Serial.print(F("Conductivity = "));
+	Serial.println(cn0411_dev->cond);
 }
 
 /**
@@ -1463,12 +1512,13 @@ void CN0411_cmd_cond(uint8_t *args, struct cn0411_device *cn0411_dev)
 */
 void CN0411_cmd_tds(uint8_t *args, struct cn0411_device *cn0411_dev)
 {
-	printf("TDS measurement in progress...\n");
+	Serial.print(F("TDS measurement in progress...\n"));
 
 	if(CN0411_compute_tds(cn0411_dev) == CN0411_FAILURE)
-		printf("Get TDS value failed!\n");
+		Serial.print(F("Get TDS value failed!\n"));
 	else
-		printf("TDS = %.10f\n", cn0411_dev->tds);
+		Serial.print(F("TDS = "));
+	Serial.println(cn0411_dev->tds);
 }
 
 /**
@@ -1478,54 +1528,43 @@ void CN0411_cmd_tds(uint8_t *args, struct cn0411_device *cn0411_dev)
 */
 void CN0411_interrupt(void)
 {
-	unsigned short status;
-	char c;
+	char c = -1;
 
-	status = UrtIntSta(pADI_UART);
-	if (status & COMIIR_NINT)
-		return;   /* Check if UART is busy */
+	UART_ReadChar(&c);
 
-	switch (status & COMIIR_STA_MSK) {
-	case COMIIR_STA_RXBUFFULL:
-		UART_ReadChar(&c);
-		switch(c) {
-		case _BS:
-			if (uart_rcnt) {
-				uart_rcnt--;
-				uart_rx_buffer[uart_rcnt] = 0;
-				UART_WriteChar(c, UART_WRITE_IN_INT);
-				UART_WriteChar(' ', UART_WRITE_IN_INT);
-				UART_WriteChar(c, UART_WRITE_IN_INT);
-			}
-			break;
-		case _CR: /* Check if read character is ENTER */
-			uart_cmd = UART_TRUE;                    /* Set flag */
-			break;
-		default:
-			uart_rx_buffer[uart_rcnt++] = c;
-
-			if (uart_rcnt == UART_RX_BUFFER_SIZE) {
-				uart_rcnt--;
-				UART_WriteChar(_BS, UART_WRITE_IN_INT);
-			}
+	switch(c) {
+	case -1:
+		return;
+		break;
+	case _BS:
+		if (uart_rcnt) {
+			uart_rcnt--;
+			uart_rx_buffer[uart_rcnt] = 0;
+			UART_WriteChar(c, UART_WRITE_IN_INT);
+			UART_WriteChar(' ', UART_WRITE_IN_INT);
 			UART_WriteChar(c, UART_WRITE_IN_INT);
 		}
-		uart_rx_buffer[uart_rcnt] = '\0';
 		break;
-	case COMIIR_STA_TXBUFEMPTY:
-		if (uart_tcnt) {
-			uart_tbusy = UART_TRUE;
-			uart_tcnt--;
-			UART_WriteChar(uart_tx_buffer[uart_tpos++], UART_WRITE);
-			if (uart_tpos == UART_TX_BUFFER_SIZE) {
-				uart_tpos = 0;
-			}
-		} else {
-			uart_tbusy = UART_FALSE;
-		}
+	case _CR: /* Check if read character is ENTER */
+		uart_cmd = UART_TRUE;                    /* Set flag */
 		break;
 	default:
-		;
+		uart_rx_buffer[uart_rcnt++] = c;
+
+		if (uart_rcnt == UART_RX_BUFFER_SIZE) {
+			uart_rcnt--;
+		}
+	}
+	uart_rx_buffer[uart_rcnt] = '\0';
+	if (uart_tcnt) {
+		uart_tbusy = UART_TRUE;
+		uart_tcnt--;
+		UART_WriteChar(uart_tx_buffer[uart_tpos++], UART_WRITE);
+		if (uart_tpos == UART_TX_BUFFER_SIZE) {
+			uart_tpos = 0;
+		}
+	} else {
+		uart_tbusy = UART_FALSE;
 	}
 }
 
@@ -1562,18 +1601,20 @@ void CN0411_pwm_gen(void)
 {
 	switch(pwm_status) {
 	case PWM_SYSCALIB_AIN7:
-		DioClr(pADI_GP1, BIT4);
-		DioSet(pADI_GP1, BIT2|BIT3);
+		digitalWrite(6, LOW);
+		digitalWrite(5, HIGH);
+		digitalWrite(4, HIGH);
 		break;
 	case PWM_SYSCALIB_AIN8:
-		DioClr(pADI_GP1, BIT2|BIT3);
-		DioSet(pADI_GP1, BIT4);
+		digitalWrite(6, HIGH);
+		digitalWrite(5, LOW);
+		digitalWrite(4, LOW);
 		break;
 	case PWM_CONVERSION:
 		if(pwm_tick_count < pwm_freq[pwm_index])
 			pwm_tick_count++;
 		else {
-			pSetClr[pwm_setclr[pwm_index]](pADI_GP1, pwm_bit[pwm_index]);
+			digitalWrite(pwm_bit[pwm_index], pwm_setclr[pwm_index]);
 			if(pwm_index >= ARRAY_SIZE(pwm_100_freq)-1) {
 				pwm_index = 0;
 				pwm_tick_count = 0;
@@ -1651,23 +1692,23 @@ int32_t CN0411_init(struct cn0411_device *cn0411_dev,
 	pwm_100_freq[4] = PWM1_100_LOW;
 	pwm_100_freq[5] = PWM0_100_LOW;
 
-	pSetClr = (PWM_SETCLR *)malloc(sizeof(PWM_SETCLR *) * 2);
-	pSetClr[0] = (PWM_SETCLR)&DioClr;
-	pSetClr[1] = (PWM_SETCLR)&DioSet;
+	pwm_setclr[0] = HIGH;
+	pwm_setclr[1] = LOW;
+	pwm_setclr[2] = HIGH;
+	pwm_setclr[3] = HIGH;
+	pwm_setclr[4] = LOW;
+	pwm_setclr[5] = LOW;
 
-	pwm_setclr[0] = PWM_SET;
-	pwm_setclr[1] = PWM_CLR;
-	pwm_setclr[2] = PWM_SET;
-	pwm_setclr[3] = PWM_SET;
-	pwm_setclr[4] = PWM_CLR;
-	pwm_setclr[5] = PWM_CLR;
+	pwm_bit[0] = 6;
+	pwm_bit[1] = 6;
+	pwm_bit[2] = 4;
+	pwm_bit[3] = 5;
+	pwm_bit[4] = 5;
+	pwm_bit[5] = 4;
 
-	pwm_bit[0] = BIT4;
-	pwm_bit[1] = BIT4;
-	pwm_bit[2] = BIT2;
-	pwm_bit[3] = BIT3;
-	pwm_bit[4] = BIT3;
-	pwm_bit[5] = BIT2;
+	pinMode(4, OUTPUT);
+	pinMode(5, OUTPUT);
+	pinMode(6, OUTPUT);
 
 	CN0411_pwm_freq(PWM_FREQ_94);
 	pwm_status = PWM_CONVERSION;
@@ -1677,21 +1718,22 @@ int32_t CN0411_init(struct cn0411_device *cn0411_dev,
 	if (ret == CN0411_FAILURE)
 		return ret;
 
+
 	/* Initial Setup DAC */
 	ret = AD5683_setup(&cn0411_dev->ad5683_dev, CS_AD5683);
 	if (ret == CN0411_FAILURE)
 		return ret;
 
 	/* Setup ADC */
-	ret = CN0411_ADC_setup (cn0411_dev);
+	ret = CN0411_ADC_setup(cn0411_dev);
 	if (ret == CN0411_FAILURE)
 		return ret;
 
-	ret = CN0411_ADC_set_io1 (cn0411_dev, cn0411_dev->ch_gain);
+	ret = CN0411_ADC_set_io1(cn0411_dev, cn0411_dev->ch_gain);
 	if (ret == CN0411_FAILURE)
 		return ret;
 
-	ret = CN0411_ADC_set_io2 (cn0411_dev);
+	ret = CN0411_ADC_set_io2(cn0411_dev);
 	if (ret == CN0411_FAILURE)
 		return ret;
 
@@ -1708,14 +1750,14 @@ int32_t CN0411_init(struct cn0411_device *cn0411_dev,
 	if (ret == CN0411_FAILURE)
 		return ret;
 
-	printf("CN0411 Successfully Initialized!\n");
-	printf("CN0411 Initial Setup:\n");
-	printf("	- ADC set to Single Conversion Mode\n");
-	printf("	- DAC output voltage set to 0.4V\n");
-	printf("	- PWM frequency set to 94Hz\n");
-	printf("	- RTD resistance set to 100Ω\n");
-	printf("	- Cell Constant set to normal\n");
-	printf("	- Solution set to NaCl\n");
+	Serial.print(F("CN0411 Successfully Initialized!\n"));
+	Serial.print(F("CN0411 Initial Setup:\n"));
+	Serial.print(F("	- ADC set to Single Conversion Mode\n"));
+	Serial.print(F("	- DAC output voltage set to 0.4V\n"));
+	Serial.print(F("	- PWM frequency set to 94Hz\n"));
+	Serial.print(F("	- RTD resistance set to 100Ω\n"));
+	Serial.print(F("	- Cell Constant set to normal\n"));
+	Serial.print(F("	- Solution set to NaCl\n"));
 
 	return ret;
 }

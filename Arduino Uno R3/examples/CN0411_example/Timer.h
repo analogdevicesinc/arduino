@@ -32,35 +32,17 @@ OTHER DEALINGS IN THE SOFTWARE.
 #ifndef TIMER_H_
 #define TIMER_H_
 
-#include <adi_processor.h>
-
 // ----------------------------------------------------------------------------
 
-#define TIMER_FREQUENCY_HZ (1000u)
-
-#define STEP 1
-#define CASE1 1*STEP
-#define CASE2 2*STEP
-#define CASE3 3*STEP
-#define CASE4 4*STEP
-#define CASE5 5*STEP
-#define CASE6 6*STEP
+#define ARDUINO_MAX_MICROSECONDS_DELAY 16383
 
 typedef uint32_t timer_ticks_t;
-
-extern volatile timer_ticks_t timer_delayCount;
 
 extern void
 timer_start (void);
 
 extern void
 timer_sleep (timer_ticks_t ticks);
-
-void
-timer_start_us (void);
-
-void
-timer_tick_us (void);
 
 void timer_sleep_5uS(timer_ticks_t ticks);
 

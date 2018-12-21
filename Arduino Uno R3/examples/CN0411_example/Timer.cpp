@@ -1,10 +1,10 @@
 /*!
- *****************************************************************************
+ *******************************************************************************
  * @file:    Timer.c
  * @brief:
  * @version: $Revision$
  * @date:    $Date$
- *-----------------------------------------------------------------------------
+ *------------------------------------------------------------------------------
  *
 Copyright (c) 2014 Liviu Ionescu.
 
@@ -29,103 +29,56 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <CN0411.h>
+#include "CN0411.h"
 #include "Timer.h"
-#include "GptLib.h"
-#include "DioLib.h"
+#include <Arduino.h>
 
-// ----------------------------------------------------------------------------
-
-// Forward declarations.
-
-void
-timer_tick (void);
-
-// ----------------------------------------------------------------------------
-
-volatile timer_ticks_t timer_delayCount;
-
-// ----------------------------------------------------------------------------
-
-volatile timer_ticks_t timer_delayCount;
-volatile timer_ticks_t timer_delayCount_us;
-
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 void
 timer_start (void)
 {
-	DioPul(pADI_GP1, 0x00);  /* Disable the internal pull ups on P1 */
+	cli(); /* stop interrupts */
 
-	DioCfg(pADI_GP1, 0x0000);    /* Configure P1 for GPIO */
+	/* set timer0 interrupt at 2kHz */
+	TCCR2A = 0; /* set entire TCCR0A register to 0 */
+	TCCR2B = 0; /* same for TCCR0B */
+	TCNT2  = 0; /* initialize counter value to 0 */
+	/* set compare match register for 2khz increments */
+	OCR2A = 20; /* = (16*10^6) / (2000*64) - 1 (must be <256) */
+	/* turn on CTC mode */
+	TCCR2A |= (1 << WGM01);
+	/* Set CS01 and CS00 bits for 64 prescaler */
+	TCCR2B |= (1 << CS01) | (0 << CS00);
+	/* enable timer compare interrupt */
+	TIMSK2 |= (1 << OCIE0A);
 
-	DioOen(pADI_GP1, 0xFF);
-	// Use general purpose timer for 1ms delays
-	GptLd(pADI_TM0,62); // 1ms
-
-	GptCfg(pADI_TM0,TCON_CLK_UCLK,TCON_PRE_DIV256,
-	       TCON_MOD|TCON_RLD|TCON_ENABLE);  // T0 config, Uclk/256,
-
-	NVIC_EnableIRQ(TIMER0_IRQn);
-}
-
-void
-timer_start_us (void)
-{
-	SystemCoreClockUpdate();
-	// Use SysTick for 5uS delays
-	SysTick_Config (SystemCoreClock / 90000);
+	sei(); /* start interrupts */
 }
 
 void
 timer_sleep (timer_ticks_t ticks)
 {
-	timer_delayCount = ticks;
-
-	// Busy wait until the SysTick decrements the counter to zero.
-	while (timer_delayCount != 0u)
-		;
+	delay(ticks);
 }
 
 void timer_sleep_5uS(timer_ticks_t ticks)
 {
-	timer_delayCount_us = ticks;
+	timer_ticks_t i;
 
-	// Busy wait until the SysTick decrements the counter to zero.
-	while (timer_delayCount_us != 0u);
-}
+	if(ticks > (ARDUINO_MAX_MICROSECONDS_DELAY / 5))
+		return;
 
-
-void
-timer_tick (void)
-{
-	// Decrement to zero the counter used by the delay routine.
-	if (timer_delayCount != 0u) {
-		--timer_delayCount;
+	for(i = 0; i < ticks; i++) {
+		CN0411_pwm_gen();
+		delayMicroseconds(5);
 	}
 }
 
-void
-timer_tick_us (void)
-{
-	// Decrement to zero the counter used by the delay routine.
-	if (timer_delayCount_us != 0u) {
-		--timer_delayCount_us;
-	}
-}
+// ----- Timer2 Interrupt Handler ----------------------------------------------
 
-// ----- SysTick_Handler() ----------------------------------------------------
-
-void
-SysTick_Handler (void)
+ISR(TIMER2_COMPA_vect)
 {
 	CN0411_pwm_gen();
-	timer_tick_us();
-}
-
-void GP_Tmr0_Int_Handler(void)
-{
-	GptClrInt(pADI_TM0,TSTA_TMOUT);
-	timer_tick ();
 }
 

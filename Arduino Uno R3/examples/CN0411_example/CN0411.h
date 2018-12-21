@@ -45,7 +45,6 @@
 
 #include "AD5683.h"
 #include "AD7124.h"
-#include <adi_processor.h>
 
 /******************************************************************************/
 /********************** Macros and Constants Definitions **********************/
@@ -91,7 +90,7 @@
 #define PWM0_100_LOW (6 * PWM_100_STEP)
 #define PWM_CLR 0
 #define PWM_SET 1
-#define ADC_SET_CH(x) (x << 15)
+#define ADC_SET_CH(x) (uint32_t)(x << 15)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define DAC_FS_VAL 0xFFFF
 #define CH_GAIN_RES_20 0
@@ -143,20 +142,6 @@
 /******************************************************************************/
 /************************** Variable Declaration ******************************/
 /******************************************************************************/
-
-typedef uint32_t (*PWM_SETCLR) (ADI_GPIO_TypeDef *pPort, uint32_t iVal);
-PWM_SETCLR *pSetClr;
-
-uint8_t pwm_status;
-uint8_t pwm_index;
-uint32_t pwm_tick_count;
-
-uint16_t pwm_2400_freq[6];
-uint16_t pwm_100_freq[6];
-uint16_t pwm_bit[6];
-uint16_t pwm_setclr[6];
-
-uint16_t *pwm_freq;
 
 struct solution {
 	float temp_coeff;
@@ -250,7 +235,7 @@ int32_t CN0411_premeasurement(struct cn0411_device *cn0411_dev);
 int32_t CN0411_set_gain_res(struct cn0411_device *cn0411_dev, int8_t ch_gain);
 cmd_func CN0411_find_command(char *cmd);
 void CN0411_cmd_process(struct cn0411_device *cn0411_dev);
-int32_t CN0411_cmd_prompt(void);
+void CN0411_cmd_prompt(void);
 uint8_t *CN0326_find_argv(uint8_t *args);
 void CN0326_get_argv(char *dst, uint8_t *args);
 void CN0411_cmd_help(uint8_t *args, struct cn0411_device *cn0411_dev);
