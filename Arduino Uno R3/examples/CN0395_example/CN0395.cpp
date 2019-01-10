@@ -147,7 +147,7 @@ cmdFunc CN0395_FindCommand(char *cmd)
 **/
 int CN0395_CmdPrompt(void)
 {
-  int res;
+  int res = UART_SUCCESS;
 
   if (res == UART_SUCCESS) {
     Serial.print('>');
@@ -461,7 +461,7 @@ void CN0395_CmdCalibration(uint8_t *args, sMeasurementVariables *sMeasVar)
     Serial.print(F("\nPlace the P2 jumper between P2-1 and P2-2 (RCAL1) and press <c> key"));
     Serial.print(F("\n"));
 
-    char response;
+    char response = '';
     while (response != 'c') {
       response = Serial.read();   // Read character from UART
     }
