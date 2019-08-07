@@ -127,8 +127,8 @@ void ADE9153AClass:: SPI_Write_32(uint16_t Address , uint32_t Data )
 	uint16_t temp_highpacket;
 	uint16_t temp_lowpacket;
 
-	temp_highpacket= (Data & 0xFFFF0000)>>16;
-	temp_lowpacket= (Data & 0x0000FFFF);
+	temp_highpacket = (Data & 0xFFFF0000) >> 16;
+	temp_lowpacket = (Data & 0x0000FFFF);
 	
 	digitalWrite(_chipSelect_Pin, LOW);
 	
@@ -137,8 +137,7 @@ void ADE9153AClass:: SPI_Write_32(uint16_t Address , uint32_t Data )
 	SPI.transfer16(temp_highpacket);
 	SPI.transfer16(temp_lowpacket);
 	
-	digitalWrite(_chipSelect_Pin, HIGH); 	
-	
+	digitalWrite(_chipSelect_Pin, HIGH);
 }
 
 /* 
@@ -154,7 +153,7 @@ uint16_t ADE9153AClass:: SPI_Read_16(uint16_t Address)
 	
 	digitalWrite(_chipSelect_Pin, LOW);
 	
-	temp_address = (((Address << 4) & 0xFFF0)+8);
+	temp_address = (((Address << 4) & 0xFFF0) + 8);
 	SPI.transfer16(temp_address);
 	returnData = SPI.transfer16(0);
 	
@@ -177,7 +176,7 @@ uint32_t ADE9153AClass:: SPI_Read_32(uint16_t Address)
 	
 	digitalWrite(_chipSelect_Pin, LOW);
 	
-	temp_address = (((Address << 4) & 0xFFF0)+8);
+	temp_address = (((Address << 4) & 0xFFF0) + 8);
 	SPI.transfer16(temp_address);
 	temp_highpacket = SPI.transfer16(0);
 	temp_lowpacket = SPI.transfer16(0);	
@@ -196,7 +195,7 @@ Input: Structure name
 Output: Respective metrology data
 */
 
-void ADE9153AClass:: ReadEnergyRegs(EnergyRegs *Data)
+void ADE9153AClass:: ReadEnergyRegs(struct EnergyRegs *Data)
 {
 	int32_t tempReg;
 	float tempValue;
@@ -217,7 +216,7 @@ void ADE9153AClass:: ReadEnergyRegs(EnergyRegs *Data)
 	Data->ApparentEnergyValue = tempValue;				//Energy in mVAhr
 }
 
-void ADE9153AClass:: ReadPowerRegs(PowerRegs *Data)
+void ADE9153AClass:: ReadPowerRegs(struct PowerRegs *Data)
 {
 	int32_t tempReg;
 	float tempValue;
@@ -238,7 +237,7 @@ void ADE9153AClass:: ReadPowerRegs(PowerRegs *Data)
 	Data->ApparentPowerValue = tempValue;				//Power in mVA
 }
 
-void ADE9153AClass:: ReadRMSRegs(RMSRegs *Data)
+void ADE9153AClass:: ReadRMSRegs(struct RMSRegs *Data)
 {
 	uint32_t tempReg;
 	float tempValue;
@@ -254,7 +253,7 @@ void ADE9153AClass:: ReadRMSRegs(RMSRegs *Data)
 	Data->VoltageRMSValue = tempValue;
 }
 
-void ADE9153AClass:: ReadHalfRMSRegs(HalfRMSRegs *Data)
+void ADE9153AClass:: ReadHalfRMSRegs(struct HalfRMSRegs *Data)
 {
 	uint32_t tempReg;
 	float tempValue;
@@ -270,56 +269,53 @@ void ADE9153AClass:: ReadHalfRMSRegs(HalfRMSRegs *Data)
 	Data->HalfVoltageRMSValue = tempValue;
 }
 
-void ADE9153AClass:: ReadPQRegs(PQRegs *Data)
+void ADE9153AClass:: ReadPQRegs(struct PQRegs *Data)
 {
 	int32_t tempReg;
 	uint16_t temp;
 	float mulConstant;
 	float tempValue;
 	
-	tempReg=int32_t (SPI_Read_32(REG_APF)); //Read PF register
+	tempReg = int32_t (SPI_Read_32(REG_APF)); //Read PF register
 	Data->PowerFactorReg = tempReg;
-	tempValue=(float)tempReg/(float)134217728; //Calculate PF
-	Data->PowerFactorValue=tempValue;
+	tempValue = (float)tempReg / (float)134217728; //Calculate PF
+	Data->PowerFactorValue = tempValue;
 	
-	tempReg=int32_t (SPI_Read_32(REG_APERIOD)); //Read PERIOD register
+	tempReg = int32_t (SPI_Read_32(REG_APERIOD)); //Read PERIOD register
 	Data->PeriodReg = tempReg;
-	tempValue=(float)(4000*65536)/(float)(tempReg+1); //Calculate Frequency
+	tempValue = (float)(4000 * 65536) / (float)(tempReg + 1); //Calculate Frequency
 	Data->FrequencyValue = tempValue;
 	
-	temp=SPI_Read_16(REG_ACCMODE); //Read frequency setting register
-	if((temp&0x0010)>0)
-		{
-			mulConstant=0.02109375;  //multiplier constant for 60Hz system
-		}
-	else
-		{
-			mulConstant=0.017578125; //multiplier constant for 50Hz system		
-		}
+	temp = SPI_Read_16(REG_ACCMODE); //Read frequency setting register
+	if((temp & 0x0010) > 0){
+		mulConstant = 0.02109375;  //multiplier constant for 60Hz system
+	}else{
+		mulConstant = 0.017578125; //multiplier constant for 50Hz system		
+	}
 	
-	tempReg=int16_t (SPI_Read_16(REG_ANGL_AV_AI)); //Read ANGLE register
-	Data->AngleReg_AV_AI=tempReg;
-	tempValue=tempReg*mulConstant;	//Calculate Angle in degrees
-	Data->AngleValue_AV_AI=tempValue;
+	tempReg = int16_t (SPI_Read_16(REG_ANGL_AV_AI)); //Read ANGLE register
+	Data->AngleReg_AV_AI = tempReg;
+	tempValue = tempReg * mulConstant;	//Calculate Angle in degrees
+	Data->AngleValue_AV_AI = tempValue;
 }
 
-void ADE9153AClass:: ReadAcalRegs(AcalRegs *Data)
+void ADE9153AClass:: ReadAcalRegs(struct AcalRegs *Data)
 {
 	uint32_t tempReg;
 	float tempValue;
 	
-	tempReg=int32_t (SPI_Read_32(REG_MS_ACAL_AICC)); //Read AICC register
+	tempReg = int32_t (SPI_Read_32(REG_MS_ACAL_AICC)); //Read AICC register
 	Data->AcalAICCReg = tempReg;
-	tempValue=(float)tempReg/(float)2048; //Calculate Conversion Constant (CC)
-	Data->AICC=tempValue;
-	tempReg=int32_t (SPI_Read_32(REG_MS_ACAL_AICERT)); //Read AICERT register
+	tempValue = (float)tempReg / (float)2048; //Calculate Conversion Constant (CC)
+	Data->AICC = tempValue;
+	tempReg = int32_t (SPI_Read_32(REG_MS_ACAL_AICERT)); //Read AICERT register
 	Data->AcalAICERTReg = tempReg;
 	
-	tempReg=int32_t (SPI_Read_32(REG_MS_ACAL_AVCC)); //Read AVCC register
+	tempReg = int32_t (SPI_Read_32(REG_MS_ACAL_AVCC)); //Read AVCC register
 	Data->AcalAVCCReg = tempReg;
-	tempValue=(float)tempReg/(float)2048; //Calculate Conversion Constant (CC)
-	Data->AVCC=tempValue;
-	tempReg=int32_t (SPI_Read_32(REG_MS_ACAL_AVCERT)); //Read AICERT register
+	tempValue = (float)tempReg / (float)2048; //Calculate Conversion Constant (CC)
+	Data->AVCC = tempValue;
+	tempReg = int32_t (SPI_Read_32(REG_MS_ACAL_AVCERT)); //Read AICERT register
 	Data->AcalAVCERTReg = tempReg;
 }
 
@@ -331,14 +327,14 @@ Output: Did it start correctly?
 
 bool ADE9153AClass::StartAcal_AINormal(void)
 {
-	uint32_t ready;
+	uint32_t ready = 0;
 	int waitTime = 0;
 	
 	ready = SPI_Read_32(REG_MS_STATUS_CURRENT);				//Read system ready bit
 	 
-	while((ready&0x00000001)==0)
+	while((ready & 0x00000001) == 0)
 	{
-		if(waitTime>11)
+		if(waitTime > 11)
 		{
 			return false;
 		}
@@ -355,10 +351,10 @@ bool ADE9153AClass::StartAcal_AITurbo(void)
 	uint32_t ready = 0;
 	int waitTime = 0;
 	 
-	while((ready&0x00000001)==0)
+	while((ready & 0x00000001) == 0)
 	{
 		ready = SPI_Read_32(REG_MS_STATUS_CURRENT);		//Read system ready bit
-		if(waitTime>15)
+		if(waitTime  >15)
 		{
 			return false;
 		}
@@ -372,13 +368,13 @@ bool ADE9153AClass::StartAcal_AITurbo(void)
 
 bool ADE9153AClass::StartAcal_AV(void)
 {
-	uint32_t ready;
+	uint32_t ready = 0;
 	int waitTime = 0;
 	 
-	while((ready&0x00000001)==0)
+	while((ready & 0x00000001) == 0)
 	{
 		ready = SPI_Read_32(REG_MS_STATUS_CURRENT);		//Read system ready bit
-		if(waitTime>15)
+		if(waitTime > 15)
 		{
 			return false;
 		}
@@ -400,8 +396,8 @@ bool ADE9153AClass::ApplyAcal(float AICC, float AVCC)
 	int32_t AIGAIN;
 	int32_t AVGAIN;
 	
-	AIGAIN = (AICC / (CAL_IRMS_CC*1000) - 1) * 134217728;
-	AVGAIN = (AVCC / (CAL_VRMS_CC*1000) - 1) * 134217728;
+	AIGAIN = (AICC / (CAL_IRMS_CC * 1000) - 1) * 134217728;
+	AVGAIN = (AVCC / (CAL_VRMS_CC * 1000) - 1) * 134217728;
 	
 	SPI_Write_32(REG_AIGAIN, AIGAIN);
 	SPI_Write_32(REG_AVGAIN, AVGAIN);
@@ -413,7 +409,7 @@ Input:	Structure name
 Output: Register reading and temperature value in Degree Celsius
 */
 
-void ADE9153AClass:: ReadTemperature(Temperature *Data)
+void ADE9153AClass:: ReadTemperature(struct Temperature * Data)
 {
 	uint32_t trim;
 	uint16_t gain;
@@ -425,11 +421,11 @@ void ADE9153AClass:: ReadTemperature(Temperature *Data)
 	delay(10); //delay of 2ms. Increase delay if TEMP_TIME is changed
 
 	trim = SPI_Read_32(REG_TEMP_TRIM);
-	gain= (trim & 0xFFFF);  //Extract 16 LSB
-	offset= ((trim>>16)&0xFFFF); //Extract 16 MSB
-	tempReg= SPI_Read_16(REG_TEMP_RSLT);	//Read Temperature result register
-	tempValue= ((float)offset / 32.00)-((float)tempReg*(float)gain/(float)131072); 
+	gain = (trim & 0xFFFF);  //Extract 16 LSB
+	offset = ((trim >> 16) & 0xFFFF); //Extract 16 MSB
+	tempReg = SPI_Read_16(REG_TEMP_RSLT);	//Read Temperature result register
+	tempValue = ((float)offset / 32.00) - ((float)tempReg * (float)gain/(float)131072); 
 	
-	Data->TemperatureReg=tempReg;
-	Data->TemperatureVal=tempValue;
+	Data->TemperatureReg = tempReg;
+	Data->TemperatureVal = tempValue;
 }
