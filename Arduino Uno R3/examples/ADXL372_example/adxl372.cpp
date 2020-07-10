@@ -42,7 +42,7 @@
 //#define ADXL_DEBUG
 
 static int adxl_read_reg_multiple(adxl_spi_handle *spi, unsigned char reg,
-                                  unsigned char count, unsigned char *val)
+                                  unsigned short count, unsigned char *val)
 {
     reg = reg << 1 | ADXL_SPI_RNW;
     return spi_write_then_read(spi, &reg, 1, val, count);   
